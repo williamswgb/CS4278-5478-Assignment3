@@ -9,6 +9,7 @@ from const import *
 from math import *
 import copy
 import argparse
+from pdb import set_trace
 
 from base_planner import Planner as BasePlanner, dump_action_table
 
@@ -33,12 +34,53 @@ class Planner(BasePlanner):
     def map_callback(self):
         """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
         """
+        # Tuple = (-1, 100, ...)
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
 
+        # Convert 1-D tuple map into 2-D tuple map based on width and height
+        new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        # new_map = np.array([[-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]])
+        # self.world_height = 10
+        # self.world_width = 10
+        # self.inflation_ratio = 1
+
+        for i in range(self.world_height):
+            for j in range(self.world_width):
+                if (new_map[i][j] == 100):
+                    for k in range(1, self.inflation_ratio+1):
+                        # inflate top
+                        top_i = i - k
+                        if top_i >= 0 and new_map[top_i][j] == -1:
+                            new_map[top_i][j] = 50
+                        # inflate bottom
+                        bottom_i = i + k
+                        if bottom_i < self.world_height and new_map[bottom_i][j] == -1:
+                            new_map[bottom_i][j] = 50
+                        # inflate left
+                        left_j = j - k
+                        if left_j >= 0 and new_map[i][left_j] == -1:
+                            new_map[i][left_j] = 50
+                        # inflate right
+                        right_j = j + k
+                        if right_j < self.world_width and new_map[i][right_j] == -1:
+                            new_map[i][right_j] = 50
+
+        # convert new_map value from inflation value 50 to obstacle value 100
+        new_map = np.where(new_map != 50, new_map, 100)
+        new_map = tuple(new_map.flatten())
         # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
 
         # you should inflate the map to get self.aug_map
-        self.aug_map = copy.deepcopy(self.map)
+        self.aug_map = new_map
 
     def astar(maze, start, end):
         """Returns a list of tuples as a path from the given start to the given end in the given maze"""
