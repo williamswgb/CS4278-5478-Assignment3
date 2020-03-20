@@ -13,14 +13,30 @@ from pdb import set_trace
 
 from base_planner import Planner as BasePlanner, dump_action_table
 
-ROBOT_SIZE = 0.2552  # width and height of robot in terms of stage unit
+EIGHT_DIRECTION_ACTIONS = {
+    "N": (0, 1),
+    "S": (0, -1),
+    "E": (1, 0),
+    "W": (-1, 0),
+    "NE": (1, 1),
+    "SE": (-1, 1),
+    "SW": (-1, -1),
+    "NW": (1, -1),
+}
+FOUR_DIRECTION_ACTIONS = {
+    "N": (0, 1),
+    "S": (0, -1),
+    "E": (1, 0),
+    "W": (-1, 0),
+}
 
 class Node():
     """A node class for A* Pathfinding"""
 
-    def __init__(self, parent=None, position=None):
+    def __init__(self, parent=None, position=None, direction=None):
         self.parent = parent
         self.position = position
+        self.direction = direction
 
         self.g = 0
         self.h = 0
@@ -38,17 +54,19 @@ class Planner(BasePlanner):
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
 
         # Convert 1-D tuple map into 2-D tuple map based on width and height
-        new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        # new_map = np.array([[-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        # new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        # new_map = np.array([
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, G],
+        #     [-1, S, -1, -1, 100, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]])
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1]
+        # ])
         # self.world_height = 10
         # self.world_width = 10
         # self.inflation_ratio = 1
@@ -82,7 +100,7 @@ class Planner(BasePlanner):
         # you should inflate the map to get self.aug_map
         self.aug_map = new_map
 
-    def astar(maze, start, end):
+    def astar_path(self, maze, start, end):
         """Returns a list of tuples as a path from the given start to the given end in the given maze"""
 
         # Create start and end node
@@ -116,29 +134,35 @@ class Planner(BasePlanner):
             # Found the goal
             if current_node == end_node:
                 path = []
+                direction = []
                 current = current_node
                 while current is not None:
                     path.append(current.position)
+                    if (current.direction is not None):
+                        direction.append(current.direction)
                     current = current.parent
+
                 return path[::-1] # Return reversed path
 
             # Generate children
             children = []
-            for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]: # Adjacent squares
-
+                        # Action    S        N       W       E        SW        SE       NW      NE
+                        # 1,1 => (1,  0), (1, 2), (0,  1), (2, 1),  (0,  0),  (0, 2), (2,  0), (2, 2)
+            for direction in FOUR_DIRECTION_ACTIONS.keys(): # Adjacent squares
+                action = FOUR_DIRECTION_ACTIONS[direction]
                 # Get node position
-                node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+                new_position = (current_node.position[0] + action[0], current_node.position[1] + action[1])
 
                 # Make sure within range
-                if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
+                if new_position[1] > (len(maze) - 1) or new_position[1] < 0 or new_position[0] > (len(maze[len(maze)-1]) -1) or new_position[0] < 0:
                     continue
 
                 # Make sure walkable terrain
-                if maze[node_position[0]][node_position[1]] != 0:
+                if maze[new_position[1]][new_position[0]] != -1:
                     continue
 
                 # Create new node
-                new_node = Node(current_node, node_position)
+                new_node = Node(current_node, new_position, direction)
 
                 # Append
                 children.append(new_node)
@@ -177,12 +201,64 @@ class Planner(BasePlanner):
 
         Each action could be: (v, \omega) where v is the linear velocity and \omega is the angular velocity
         """
-        x, y, phi = self.get_current_discrete_state()
+        # x, y, phi = (1, 1, 0)
+        # map = np.array([
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, 100, 100, 100, -1, -1, -1, -1],
+        #     [-1, -1, 100, 100, 100, 100, 100, -1, -1, -1],
+        #     [-1, -1, 100, 100, 100, 100, 100, -1, -1, -1],
+        #     [-1, -1, -1, 100, 100, 100, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
+        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+        # ])
+        # start = (x, y)
+        # goal = (9, 9)
+        # path = self.astar_path(map, start, goal)
+
+        # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
+        x, y, phi = self.get_current_discrete_state() # (1, 1, 0) []>
         start = (x, y)
         goal = self._get_goal_position()
+        path = self.astar_path(self.map, start, goal)
 
-        path = astar(self.map, start, goal)
-        self.action_seq = path
+        actions = []
+        current_x, current_y, current_phi = (x, y, phi)
+
+        for new_position in path:
+            if (current_x, current_y) == new_position:
+                continue
+            for next_phi in [0, 1, 2, -1]:
+                # check next position after moving forward
+                next_x = current_x
+                next_y = current_y
+                if next_phi == 0 or next_phi == 2:
+                    next_x += (next_phi * -1 + 1)
+                elif next_phi == -1 or next_phi == 1:
+                    next_y += next_phi
+
+                # if moving forward goes to the correct new position
+                if (next_x, next_y) == new_position:
+                    phi_diff = next_phi - current_phi
+                    # Perform rotate 180
+                    if abs(phi_diff) == 2:
+                        actions.append((0, 1))
+                        actions.append((0, 1))
+                    # Perform turn left
+                    elif phi_diff % 4 == 1:
+                        actions.append((0, 1))
+                    # Perform turn right
+                    elif phi_diff % 4 == 3:
+                        actions.append((0, -1))
+                    # Perform moving forward
+                    actions.append((1, 0))
+                    # set the current position with new one
+                    current_x, current_y, current_phi = next_x, next_y, next_phi
+                    break
+
+        self.action_seq = actions
 
     def collision_checker(self, x, y):
         """TODO: FILL ME!
@@ -196,8 +272,8 @@ class Planner(BasePlanner):
         Returns:
             bool -- True for collision, False for non-collision
         """
-
-        return False
+        aug_map = np.reshape(np.array(self.aug_map), (self.world_width, self.world_height))
+        return aug_map[y][x] == 100
 
 
 if __name__ == "__main__":
@@ -241,4 +317,4 @@ if __name__ == "__main__":
     # dump_action_table(planner.action_table, 'mdp_policy.json')
 
     # spin the ros
-    # rospy.spin()
+    rospy.spin()
