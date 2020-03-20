@@ -54,7 +54,7 @@ class Planner(BasePlanner):
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
 
         # Convert 1-D tuple map into 2-D tuple map based on width and height
-        # new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
         # new_map = np.array([
         #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, G],
         #     [-1, S, -1, -1, 100, -1, -1, -1, -1, -1],
@@ -219,10 +219,11 @@ class Planner(BasePlanner):
         # path = self.astar_path(map, start, goal)
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
+        map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
         x, y, phi = self.get_current_discrete_state() # (1, 1, 0) []>
         start = (x, y)
         goal = self._get_goal_position()
-        path = self.astar_path(self.map, start, goal)
+        path = self.astar_path(map, start, goal)
 
         actions = []
         current_x, current_y, current_phi = (x, y, phi)
