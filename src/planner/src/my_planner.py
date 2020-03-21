@@ -57,7 +57,7 @@ class Planner(BasePlanner):
         stage_width = int(self.world_width * self.resolution)
         merge_cells_width = self.world_width / stage_width
         merge_cells_height = self.world_height / stage_height
-        new_map = np.reshape(np.array(self.map), (self.world_height, self.world_widht))
+        new_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
 
         # simple_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
         # simple_map = np.where(simple_map != 100, simple_map, 1)
