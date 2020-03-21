@@ -24,8 +24,8 @@ EIGHT_DIRECTION_ACTIONS = {
     "NW": (1, -1),
 }
 FOUR_DIRECTION_ACTIONS = {
-    "N": (0, 1),
-    "S": (0, -1),
+    "N": (0, -1),
+    "S": (0, 1),
     "E": (1, 0),
     "W": (-1, 0),
 }
@@ -33,10 +33,9 @@ FOUR_DIRECTION_ACTIONS = {
 class Node():
     """A node class for A* Pathfinding"""
 
-    def __init__(self, parent=None, position=None, direction=None):
+    def __init__(self, parent=None, position=None):
         self.parent = parent
         self.position = position
-        self.direction = direction
 
         self.g = 0
         self.h = 0
@@ -52,141 +51,205 @@ class Planner(BasePlanner):
         """
         # Tuple = (-1, 100, ...)
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
+        # self.map = tuple(np.loadtxt('map.txt'))
+
+        stage_height = int(self.world_height * self.resolution)
+        stage_width = int(self.world_width * self.resolution)
+        merge_cells_width = self.world_width / stage_width
+        merge_cells_height = self.world_height / stage_height
+        new_map = np.reshape(np.array(self.map), (self.world_height, self.world_widht))
+
+        # simple_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        # simple_map = np.where(simple_map != 100, simple_map, 1)
+        # simple_map = np.where(simple_map == -1, 0, simple_map)
+        new_map = np.flipud(new_map)
+        shrinked_map = np.empty((len(new_map), merge_cells_width))
+        for i in range(len(new_map)):
+            shrinked_map[i] = np.max(new_map[i].reshape(-1, stage_width), axis=1)
+
+        shrinked_map = np.transpose(shrinked_map)
+        stage_map = np.empty((merge_cells_height, merge_cells_width))
+        for i in range(len(shrinked_map)):
+            stage_map[i] = np.max(shrinked_map[i].reshape(-1, stage_height), axis=1)
+        stage_map = np.transpose(stage_map)
+        self.aug_map = stage_map
 
         # Convert 1-D tuple map into 2-D tuple map based on width and height
-        new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        # new_map = np.array([
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, G],
-        #     [-1, S, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1]
-        # ])
-        # self.world_height = 10
-        # self.world_width = 10
-        # self.inflation_ratio = 1
+        # new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        # new_map = np.flipud(new_map)
+        # for i in range(self.world_height):
+        #     for j in range(self.world_width):
+        #         if (new_map[i][j] == 100):
+        #             for k in range(1, self.inflation_ratio+1):
+        #                 # inflate top
+        #                 top_i = i - k
+        #                 if top_i >= 0 and new_map[top_i][j] == -1:
+        #                     new_map[top_i][j] = 50
+        #                 # inflate bottom
+        #                 bottom_i = i + k
+        #                 if bottom_i < self.world_height and new_map[bottom_i][j] == -1:
+        #                     new_map[bottom_i][j] = 50
+        #                 # inflate left
+        #                 left_j = j - k
+        #                 if left_j >= 0 and new_map[i][left_j] == -1:
+        #                     new_map[i][left_j] = 50
+        #                 # inflate right
+        #                 right_j = j + k
+        #                 if right_j < self.world_width and new_map[i][right_j] == -1:
+        #                     new_map[i][right_j] = 50
 
-        for i in range(self.world_height):
-            for j in range(self.world_width):
-                if (new_map[i][j] == 100):
-                    for k in range(1, self.inflation_ratio+1):
-                        # inflate top
-                        top_i = i - k
-                        if top_i >= 0 and new_map[top_i][j] == -1:
-                            new_map[top_i][j] = 50
-                        # inflate bottom
-                        bottom_i = i + k
-                        if bottom_i < self.world_height and new_map[bottom_i][j] == -1:
-                            new_map[bottom_i][j] = 50
-                        # inflate left
-                        left_j = j - k
-                        if left_j >= 0 and new_map[i][left_j] == -1:
-                            new_map[i][left_j] = 50
-                        # inflate right
-                        right_j = j + k
-                        if right_j < self.world_width and new_map[i][right_j] == -1:
-                            new_map[i][right_j] = 50
-
-        # convert new_map value from inflation value 50 to obstacle value 100
-        new_map = np.where(new_map != 50, new_map, 100)
-        new_map = tuple(new_map.flatten())
+        # # convert new_map value from inflation value 50 to obstacle value 100
+        # new_map = np.where(new_map != 50, new_map, 100)
+        # new_map = tuple(new_map.flatten())
         # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
 
         # you should inflate the map to get self.aug_map
-        self.aug_map = new_map
+        # self.aug_map = new_map
 
-    def astar_path(self, maze, start, end):
-        """Returns a list of tuples as a path from the given start to the given end in the given maze"""
+    #This function return the path of the search
+    def return_path(self, current_node):
+        path = []
+        current = current_node
+        while current is not None:
+            path.append(current.position)
+            current = current.parent
 
-        # Create start and end node
+        return path[::-1] # Return reversed path
+
+    def astar_path(self, maze, start, end, cost=1):
+        """
+            Returns a list of tuples as a path from the given start to the given end in the given maze
+            :param maze:
+            :param cost
+            :param start:
+            :param end:
+            :return:
+        """
+
+        # Create start and end node with initized values for g, h and f
         start_node = Node(None, start)
         start_node.g = start_node.h = start_node.f = 0
         end_node = Node(None, end)
         end_node.g = end_node.h = end_node.f = 0
 
-        # Initialize both open and closed list
-        open_list = []
-        closed_list = []
+        # Initialize both yet_to_visit and visited list
+        # in this list we will put all node that are yet_to_visit for exploration.
+        # From here we will find the lowest cost node to expand next
+        yet_to_visit_list = []
+        # in this list we will put all node those already explored so that we don't explore it again
+        visited_list = []
 
         # Add the start node
-        open_list.append(start_node)
+        yet_to_visit_list.append(start_node)
+
+        # Adding a stop condition. This is to avoid any infinite loop and stop
+        # execution after some reasonable number of steps
+        outer_iterations = 0
+        max_iterations = (len(maze) // 2) ** 10
+
+
+        """
+            1) We first get the current node by comparing all f cost and selecting the lowest cost node for further expansion
+            2) Check max iteration reached or not . Set a message and stop execution
+            3) Remove the selected node from yet_to_visit list and add this node to visited list
+            4) Perofmr Goal test and return the path else perform below steps
+            5) For selected node find out all children (use move to find children)
+                a) get the current postion for the selected node (this becomes parent node for the children)
+                b) check if a valid position exist (boundary will make few nodes invalid)
+                c) if any node is a wall then ignore that
+                d) add to valid children node list for the selected parent
+
+                For all the children node
+                    a) if child in visited list then ignore it and try next node
+                    b) calculate child node g, h and f values
+                    c) if child in yet_to_visit list then ignore it
+                    d) else move the child to yet_to_visit list
+        """
+        #find maze has got how many rows and columns
+        no_rows, no_columns = np.shape(maze)
 
         # Loop until you find the end
-        while len(open_list) > 0:
+        while len(yet_to_visit_list) > 0:
+
+            # Every time any node is referred from yet_to_visit list, counter of limit operation incremented
+            outer_iterations += 1
 
             # Get the current node
-            current_node = open_list[0]
+            current_node = yet_to_visit_list[0]
             current_index = 0
-            for index, item in enumerate(open_list):
+            for index, item in enumerate(yet_to_visit_list):
                 if item.f < current_node.f:
                     current_node = item
                     current_index = index
 
-            # Pop current off open list, add to closed list
-            open_list.pop(current_index)
-            closed_list.append(current_node)
+            # if we hit this point return the path such as it may be no solution or
+            # computation cost is too high
+            if outer_iterations > max_iterations:
+                print ("giving up on pathfinding too many iterations")
+                return self.return_path(current_node)
 
-            # Found the goal
+            # Pop current node out off yet_to_visit list, add to visited list
+            yet_to_visit_list.pop(current_index)
+            visited_list.append(current_node)
+
+            # test if goal is reached or not, if yes then return the path
             if current_node == end_node:
-                path = []
-                direction = []
-                current = current_node
-                while current is not None:
-                    path.append(current.position)
-                    if (current.direction is not None):
-                        direction.append(current.direction)
-                    current = current.parent
+                return self.return_path(current_node)
 
-                return path[::-1] # Return reversed path
-
-            # Generate children
+            # Generate children from all adjacent squares
             children = []
-                        # Action    S        N       W       E        SW        SE       NW      NE
-                        # 1,1 => (1,  0), (1, 2), (0,  1), (2, 1),  (0,  0),  (0, 2), (2,  0), (2, 2)
-            for direction in FOUR_DIRECTION_ACTIONS.keys(): # Adjacent squares
-                action = FOUR_DIRECTION_ACTIONS[direction]
-                # Get node position
-                new_position = (current_node.position[0] + action[0], current_node.position[1] + action[1])
 
-                # Make sure within range
-                if new_position[1] > (len(maze) - 1) or new_position[1] < 0 or new_position[0] > (len(maze[len(maze)-1]) -1) or new_position[0] < 0:
+            for new_position in FOUR_DIRECTION_ACTIONS.values():
+
+                # Get node position
+                node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+
+                # Make sure within range (check if within maze boundary)
+                if (node_position[0] > (no_columns -1) or
+                    node_position[0] < 0 or
+                    node_position[1] > (no_rows - 1) or
+                    node_position[1] < 0):
                     continue
 
                 # Make sure walkable terrain
-                if maze[new_position[1]][new_position[0]] != -1:
+                if maze[node_position[1]][node_position[0]] != -1:
                     continue
 
                 # Create new node
-                new_node = Node(current_node, new_position, direction)
+                new_node = Node(current_node, node_position)
 
                 # Append
                 children.append(new_node)
 
             # Loop through children
             for child in children:
-
-                # Child is on the closed list
-                for closed_child in closed_list:
-                    if child == closed_child:
-                        continue
+                # Child is on the visited list (search entire visited list)
+                if len([visited_child for visited_child in visited_list if visited_child == child]) > 0:
+                    continue
 
                 # Create the f, g, and h values
-                child.g = current_node.g + 1
-                child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
+                child.g = current_node.g + cost
+                ## Heuristic costs calculated here, this is using eucledian distance
+                child.h = (((child.position[0] - end_node.position[0]) ** 2) +
+                        ((child.position[1] - end_node.position[1]) ** 2))
+
                 child.f = child.g + child.h
 
-                # Child is already in the open list
-                for open_node in open_list:
-                    if child == open_node and child.g > open_node.g:
-                        continue
+                # Child is already in the yet_to_visit list and g cost is already lower
+                if len([i for i in yet_to_visit_list if child == i and child.g > i.g]) > 0:
+                    continue
 
-                # Add the child to the open list
-                open_list.append(child)
+                # Add the child to the yet_to_visit list
+                yet_to_visit_list.append(child)
+
+    def convert_position_to_stage_map_coordinate(self, x, y):
+        stage_height = int(self.world_height * self.resolution) # 200 * 0.05 = 10
+        stage_width = int(self.world_width * self.resolution) # 200 * 0.05 = 10
+        merge_cells_width = self.world_width / stage_width # 200 / 10 = 20
+        merge_cells_height = self.world_height / stage_height # 200 / 10 = 20
+        x_new = x * merge_cells_width / stage_width
+        y_new = (merge_cells_height - 1) - (y * merge_cells_height / stage_height)
+        return x_new, y_new
 
     def generate_plan(self):
         """TODO: FILL ME! This function generates the plan for the robot, given a goal.
@@ -201,7 +264,6 @@ class Planner(BasePlanner):
 
         Each action could be: (v, \omega) where v is the linear velocity and \omega is the angular velocity
         """
-        # x, y, phi = (1, 1, 0)
         # map = np.array([
         #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
@@ -214,19 +276,19 @@ class Planner(BasePlanner):
         #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
         #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
         # ])
-        # start = (x, y)
-        # goal = (9, 9)
-        # path = self.astar_path(map, start, goal)
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        x, y, phi = self.get_current_discrete_state() # (1, 1, 0) []>
-        start = (x, y)
-        goal = self._get_goal_position()
-        path = self.astar_path(map, start, goal)
+        x_start, y_start, phi = (1, 1, 0)
+        x_goal, y_goal = (5, 5)
+        # x_start, y_start, phi = self.get_current_discrete_state() # (1, 1, 0) []>
+        # x_goal, y_goal = self._get_goal_position()
+        start = self.convert_position_to_stage_map_coordinate(x_start, y_start)
+        goal = self.convert_position_to_stage_map_coordinate(x_goal, y_goal)
+        path = self.astar_path(self.aug_map, start, goal)
 
         actions = []
-        current_x, current_y, current_phi = (x, y, phi)
+        current_x, current_y = start
+        current_phi = phi
 
         for new_position in path:
             if (current_x, current_y) == new_position:
@@ -247,14 +309,14 @@ class Planner(BasePlanner):
                     if abs(phi_diff) == 2:
                         actions.append((0, 1))
                         actions.append((0, 1))
-                    # Perform turn left
-                    elif phi_diff % 4 == 1:
-                        actions.append((0, 1))
                     # Perform turn right
-                    elif phi_diff % 4 == 3:
+                    elif phi_diff % 4 == 1:
                         actions.append((0, -1))
+                    # Perform turn left
+                    elif phi_diff % 4 == 3:
+                        actions.append((0, 1))
                     # Perform moving forward
-                    actions.append((1, 0))
+                    actions.append((0.5, 0))
                     # set the current position with new one
                     current_x, current_y, current_phi = next_x, next_y, next_phi
                     break
@@ -273,8 +335,9 @@ class Planner(BasePlanner):
         Returns:
             bool -- True for collision, False for non-collision
         """
-        aug_map = np.reshape(np.array(self.aug_map), (self.world_width, self.world_height))
-        return aug_map[y][x] == 100
+        x_stage, y_stage = self.convert_position_to_stage_map_coordinate(x, y)
+
+        return self.aug_map[y_stage][x_stage] == 100
 
 
 if __name__ == "__main__":
@@ -312,7 +375,7 @@ if __name__ == "__main__":
 
     # save your action sequence
     result = np.array(planner.action_seq)
-    # np.savetxt("actions_continuous.txt", result, fmt="%.2e")
+    np.savetxt("actions_continuous.txt", result, fmt="%.2e")
 
     # for MDP, please dump your policy table into a json file
     # dump_action_table(planner.action_table, 'mdp_policy.json')
