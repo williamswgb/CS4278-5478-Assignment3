@@ -9,6 +9,7 @@ from const import *
 from math import *
 import copy
 import argparse
+from scipy import ndimage
 from pdb import set_trace
 
 from base_planner import Planner as BasePlanner, dump_action_table, ROBOT_SIZE
@@ -53,112 +54,15 @@ class Planner(BasePlanner):
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
         # self.map = tuple(np.loadtxt('map.txt'))
 
-        # stage_height = int(self.world_height * self.resolution) # 200 * 0.5 = 10
-        # stage_width = int(self.world_width * self.resolution) # 200 * 0.5 = 10
-        # merge_cells_width = self.world_width / stage_width # 200 / 10 = 20
-        # merge_cells_height = self.world_height / stage_height # 200 / 10 = 20
-        # new_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
-
-        # simple_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        # simple_map = np.where(simple_map != 100, simple_map, 1)
-        # simple_map = np.where(simple_map == -1, 0, simple_map)
-        # new_map = np.flipud(new_map)
-        # shrinked_map = np.empty((len(new_map), merge_cells_width))
-        # for i in range(len(new_map)):
-        #     shrinked_map[i] = np.max(new_map[i].reshape(-1, stage_width), axis=1)
-
-        # shrinked_map = np.transpose(shrinked_map)
-        # stage_map = np.empty((merge_cells_height, merge_cells_width))
-        # for i in range(len(shrinked_map)):
-        #     stage_map[i] = np.max(shrinked_map[i].reshape(-1, stage_height), axis=1)
-        # stage_map = np.transpose(stage_map)
-        # self.aug_map = stage_map
-
-        # simple_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        # simple_map = np.where(simple_map != 100, simple_map, 1)
-        # simple_map = np.where(simple_map == -1, 0, simple_map)
-        # simple_map = np.flipud(simple_map)
-        # # np.savetxt("new_simple_map.txt", simple_map, fmt="%i")
-        # expanded_length = np.int(np.ceil(self.inflation_ratio + ROBOT_SIZE / self.resolution))
-
-        # for i in range(self.world_height):
-        #     for j in range(self.world_width):
-        #         if (simple_map[i][j] == 1):
-        #             for k in range(1, expanded_length+1):
-        #                 # inflate top
-        #                 top_i = i - k
-        #                 if top_i >= 0 and simple_map[top_i][j] == 0:
-        #                     simple_map[top_i][j] = 50
-        #                 # inflate bottom
-        #                 bottom_i = i + k
-        #                 if bottom_i < self.world_height and simple_map[bottom_i][j] == 0:
-        #                     simple_map[bottom_i][j] = 50
-        #                 # inflate left
-        #                 left_j = j - k
-        #                 if left_j >= 0 and simple_map[i][left_j] == 0:
-        #                     simple_map[i][left_j] = 50
-        #                 # inflate right
-        #                 right_j = j + k
-        #                 if right_j < self.world_width and simple_map[i][right_j] == 0:
-        #                     simple_map[i][right_j] = 50
-        #                 # inflate top-right
-        #                 if top_i >= 0 and right_j < self.world_width and simple_map[top_i][right_j] == 0:
-        #                     simple_map[top_i][right_j] = 50
-        #                 # inflate bottom-right
-        #                 if bottom_i < self.world_height and right_j < self.world_width and simple_map[bottom_i][right_j] == 0:
-        #                     simple_map[bottom_i][right_j] = 50
-        #                 # inflate bottom-left
-        #                 if bottom_i < self.world_height and left_j >= 0 and simple_map[bottom_i][left_j] == 0:
-        #                     simple_map[bottom_i][left_j] = 50
-        #                 # inflate top-left
-        #                 if top_i >= 0 and left_j >= 0 and simple_map[top_i][left_j] == 0:
-        #                     simple_map[top_i][left_j] = 50
-
-        # simple_map = np.where(simple_map != 50, simple_map, 1)
-        # self.aug_map = simple_map
-        # np.savetxt("inflated_simple_map_flipud.txt", simple_map, fmt="%i")
-        # set_trace()
-
-        # Convert 1-D tuple map into 2-D tuple map based on width and height
-        new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
-        # new_map = np.flipud(new_map)
-        expanded_length = np.int(np.ceil(self.inflation_ratio + ROBOT_SIZE / self.resolution))
-
-        for i in range(self.world_height):
-            for j in range(self.world_width):
-                if (new_map[i][j] == 1):
-                    for k in range(1, expanded_length+1):
-                        # inflate top
-                        top_i = i - k
-                        if top_i >= 0 and new_map[top_i][j] == -1:
-                            new_map[top_i][j] = 50
-                        # inflate bottom
-                        bottom_i = i + k
-                        if bottom_i < self.world_height and new_map[bottom_i][j] == -1:
-                            new_map[bottom_i][j] = 50
-                        # inflate left
-                        left_j = j - k
-                        if left_j >= 0 and new_map[i][left_j] == -1:
-                            new_map[i][left_j] = 50
-                        # inflate right
-                        right_j = j + k
-                        if right_j < self.world_width and new_map[i][right_j] == -1:
-                            new_map[i][right_j] = 50
-                        # inflate top-right
-                        if top_i >= 0 and right_j < self.world_width and new_map[top_i][right_j] == -1:
-                            new_map[top_i][right_j] = 50
-                        # inflate bottom-right
-                        if bottom_i < self.world_height and right_j < self.world_width and new_map[bottom_i][right_j] == -1:
-                            new_map[bottom_i][right_j] = 50
-                        # inflate bottom-left
-                        if bottom_i < self.world_height and left_j >= 0 and new_map[bottom_i][left_j] == -1:
-                            new_map[bottom_i][left_j] = 50
-                        # inflate top-left
-                        if top_i >= 0 and left_j >= 0 and new_map[top_i][left_j] == -1:
-                            new_map[top_i][left_j] = 50
-
-        new_map = np.where(new_map != 50, new_map, 100)
-        self.aug_map = new_map
+        aug_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        aug_map = np.where(aug_map == 100, 1, aug_map)
+        aug_map = np.where(aug_map == -1, 0, aug_map)
+        # aug_map = np.flipud(aug_map)
+        inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
+        aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
+        aug_map = np.where(aug_map == 1, 100, aug_map)
+        aug_map = np.where(aug_map == 0, -1, aug_map)
+        self.aug_map = aug_map
         # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
 
         # you should inflate the map to get self.aug_map
@@ -257,11 +161,11 @@ class Planner(BasePlanner):
             # Generate children from all adjacent squares
             children = []
 
-            for (i, j) in FOUR_DIRECTION_ACTIONS.values():
+            for moves in FOUR_DIRECTION_ACTIONS.values():
+                i = self.convert_length_to_number_of_pixels(moves[0])
+                j = self.convert_length_to_number_of_pixels(moves[1])
                 # Get node position
-                x_new, y_new = int(i/self.resolution), int(j/self.resolution)
-
-                node_position = (current_node.position[0] + x_new, current_node.position[1] + y_new)
+                node_position = (current_node.position[0] + i, current_node.position[1] + j)
 
                 # Make sure within range (check if within maze boundary)
                 if (node_position[0] > (no_columns -1) or
@@ -272,22 +176,22 @@ class Planner(BasePlanner):
 
                 # Make sure walkable terrain
                 collided = False
-                if (x_new != 0):
-                    x_start = x_new
-                    increment = -1 if x_start > 0 else 1
-                    while (x_start != 0):
-                        if (maze[node_position[1]][current_node.position[0] + x_start] != -1):
+                if (i != 0):
+                    i_start = i
+                    increment = -1 if i_start > 0 else 1
+                    while (i_start != 0):
+                        if (maze[node_position[1]][current_node.position[0] + i_start] != -1):
                             collided = True
                             break
-                        x_start += increment
-                elif (y_new != 0):
-                    y_start = y_new
-                    increment = -1 if y_start > 0 else 1
-                    while (y_start != 0):
-                        if (maze[current_node.position[1] + y_start][node_position[0]] != -1):
+                        i_start += increment
+                elif (j != 0):
+                    j_start = j
+                    increment = -1 if j_start > 0 else 1
+                    while (j_start != 0):
+                        if (maze[current_node.position[1] + j_start][node_position[0]] != -1):
                             collided = True
                             break
-                        y_start += increment
+                        j_start += increment
 
                 # for i in range(x_new):
                 #     # Make sure walkable terrain
@@ -325,15 +229,19 @@ class Planner(BasePlanner):
                 yet_to_visit_list.append(child)
 
     def convert_position_to_stage_map_coordinate(self, x, y):
-        # stage_height = int(self.world_height * self.resolution) # 200 * 0.05 = 10
-        # stage_width = int(self.world_width * self.resolution) # 200 * 0.05 = 10
-        # merge_cells_width = self.world_width / stage_width # 200 / 10 = 20
-        # merge_cells_height = self.world_height / stage_height # 200 / 10 = 20
-        # x_new = x * merge_cells_width / stage_width
-        # y_new = (merge_cells_height - 1) - (y * merge_cells_height / stage_height)
-        x_new = int(x / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution))
-        y_new = int(y / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution))
+        x_new = int(x / self.resolution)
+        y_new = int(y / self.resolution)
+        # x_new = int(x / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
+        # y_new = int(y / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
         return x_new, y_new
+
+    def convert_length_to_number_of_pixels(self, i):
+        if i == 0:
+            return i
+        return int(i / self.resolution)
+        # if i > 0:
+        #     return int(i / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
+        # return int(i / self.resolution - self.inflation_ratio - np.ceil(ROBOT_SIZE / self.resolution) - 1)
 
     def generate_plan(self):
         """TODO: FILL ME! This function generates the plan for the robot, given a goal.
@@ -348,18 +256,6 @@ class Planner(BasePlanner):
 
         Each action could be: (v, \omega) where v is the linear velocity and \omega is the angular velocity
         """
-        # map = np.array([
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, 100, 100, 100, -1, -1, -1, -1],
-        #     [-1, -1, 100, 100, 100, 100, 100, -1, -1, -1],
-        #     [-1, -1, 100, 100, 100, 100, 100, -1, -1, -1],
-        #     [-1, -1, -1, 100, 100, 100, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, 100, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1],
-        #     [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
-        # ])
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
         # x_start, y_start, phi = (1, 1, 0)
@@ -373,7 +269,8 @@ class Planner(BasePlanner):
         actions = []
         current_x, current_y = start
         current_phi = phi
-        increment = int(1 / self.resolution)
+        increment = self.convert_length_to_number_of_pixels(1)
+
         for new_position in path:
             if (current_x, current_y) == new_position:
                 continue
@@ -396,11 +293,9 @@ class Planner(BasePlanner):
                     # Perform turn right
                     elif phi_diff % 4 == 1:
                         actions.append((0, 1))
-                        actions.append((1, 0))
                     # Perform turn left
                     elif phi_diff % 4 == 3:
                         actions.append((0, -1))
-                        actions.append((1, 0))
                     # Perform moving forward
                     actions.append((1, 0))
                     # set the current position with new one
