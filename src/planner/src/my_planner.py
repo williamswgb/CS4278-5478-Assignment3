@@ -200,9 +200,10 @@ class Planner(BasePlanner):
             children = []
 
             for new_position in FOUR_DIRECTION_ACTIONS.values():
+                x, y = new_position
 
                 # Get node position
-                node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+                node_position = (current_node.position[0] + x * 2, current_node.position[1] + y * 2)
 
                 # Make sure within range (check if within maze boundary)
                 if (node_position[0] > (no_columns -1) or
@@ -212,7 +213,8 @@ class Planner(BasePlanner):
                     continue
 
                 # Make sure walkable terrain
-                if maze[node_position[1]][node_position[0]] != -1:
+                if (maze[node_position[1] - y][node_position[0] -x] != -1 or
+                    maze[node_position[1]][node_position[0]] != -1):
                     continue
 
                 # Create new node
@@ -298,9 +300,9 @@ class Planner(BasePlanner):
                 next_x = current_x
                 next_y = current_y
                 if next_phi == 0 or next_phi == 2:
-                    next_x += (next_phi * -1 + 1)
+                    next_x += (next_phi * -2 + 2)
                 elif next_phi == -1 or next_phi == 1:
-                    next_y += next_phi
+                    next_y += (next_phi * 2)
 
                 # if moving forward goes to the correct new position
                 if (next_x, next_y) == new_position:
@@ -316,7 +318,7 @@ class Planner(BasePlanner):
                     elif phi_diff % 4 == 3:
                         actions.append((0, 1))
                     # Perform moving forward
-                    actions.append((0.5, 0))
+                    actions.append((1, 0))
                     # set the current position with new one
                     current_x, current_y, current_phi = next_x, next_y, next_phi
                     break
