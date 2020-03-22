@@ -122,7 +122,7 @@ class Planner(BasePlanner):
         # Convert 1-D tuple map into 2-D tuple map based on width and height
         new_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
         # new_map = np.flipud(new_map)
-        expanded_length = np.int(np.ceil(self.inflation_ratio + (ROBOT_SIZE / self.resolution)) / 2)
+        expanded_length = np.int(np.ceil(self.inflation_ratio + ROBOT_SIZE / self.resolution))
 
         for i in range(self.world_height):
             for j in range(self.world_width):
@@ -257,9 +257,10 @@ class Planner(BasePlanner):
             # Generate children from all adjacent squares
             children = []
 
-            for (x, y) in FOUR_DIRECTION_ACTIONS.values():
+            for (i, j) in FOUR_DIRECTION_ACTIONS.values():
                 # Get node position
-                x_new, y_new = int(x/self.resolution), int(y/self.resolution)
+                x_new, y_new = int(i/self.resolution), int(j/self.resolution)
+
                 node_position = (current_node.position[0] + x_new, current_node.position[1] + y_new)
 
                 # Make sure within range (check if within maze boundary)
@@ -330,8 +331,8 @@ class Planner(BasePlanner):
         # merge_cells_height = self.world_height / stage_height # 200 / 10 = 20
         # x_new = x * merge_cells_width / stage_width
         # y_new = (merge_cells_height - 1) - (y * merge_cells_height / stage_height)
-        x_new = int(x / self.resolution + self.inflation_ratio + np.ceil((ROBOT_SIZE / self.resolution) / 2))
-        y_new = int(y / self.resolution + self.inflation_ratio + np.ceil((ROBOT_SIZE / self.resolution) / 2))
+        x_new = int(x / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution))
+        y_new = int(y / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution))
         return x_new, y_new
 
     def generate_plan(self):
@@ -372,7 +373,7 @@ class Planner(BasePlanner):
         actions = []
         current_x, current_y = start
         current_phi = phi
-
+        increment = int(1 / self.resolution)
         for new_position in path:
             if (current_x, current_y) == new_position:
                 continue
@@ -381,9 +382,9 @@ class Planner(BasePlanner):
                 next_x = current_x
                 next_y = current_y
                 if next_phi == 0 or next_phi == 2:
-                    next_x += (next_phi * (-1 / self.resolution) + (1 / self.resolution))
+                    next_x += (next_phi * (-increment) + increment)
                 elif next_phi == -1 or next_phi == 1:
-                    next_y += (next_phi * (1 / self.resolution))
+                    next_y += (next_phi * increment)
 
                 # if moving forward goes to the correct new position
                 if (next_x, next_y) == new_position:
@@ -395,9 +396,11 @@ class Planner(BasePlanner):
                     # Perform turn right
                     elif phi_diff % 4 == 1:
                         actions.append((0, 1))
+                        actions.append((1, 0))
                     # Perform turn left
                     elif phi_diff % 4 == 3:
                         actions.append((0, -1))
+                        actions.append((1, 0))
                     # Perform moving forward
                     actions.append((1, 0))
                     # set the current position with new one
