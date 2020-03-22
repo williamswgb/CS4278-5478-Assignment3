@@ -362,10 +362,10 @@ class Planner(BasePlanner):
         # ])
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        x_start, y_start, phi = (1, 1, 0)
-        x_goal, y_goal = (5, 5)
-        # x_start, y_start, phi = self.get_current_discrete_state() # (1, 1, 0) []>
-        # x_goal, y_goal = self._get_goal_position()
+        # x_start, y_start, phi = (1, 1, 0)
+        # x_goal, y_goal = (5, 5)
+        x_start, y_start, phi = self.get_current_discrete_state() # (1, 1, 0) []>
+        x_goal, y_goal = self._get_goal_position()
         start = self.convert_position_to_stage_map_coordinate(x_start, y_start)
         goal = self.convert_position_to_stage_map_coordinate(x_goal, y_goal)
         path = self.astar_path(self.aug_map, start, goal)
