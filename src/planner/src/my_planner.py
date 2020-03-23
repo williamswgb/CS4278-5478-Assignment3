@@ -54,7 +54,7 @@ class Planner(BasePlanner):
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
         # self.map = tuple(np.loadtxt('map.txt'))
 
-        aug_map = np.reshape(np.array(self.map), (self.world_width, self.world_height))
+        aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
         aug_map = np.where(aug_map == 100, 1, aug_map)
         aug_map = np.where(aug_map == -1, 0, aug_map)
         # aug_map = np.flipud(aug_map)
