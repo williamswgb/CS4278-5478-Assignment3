@@ -62,11 +62,10 @@ class Planner(BasePlanner):
         aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
         aug_map = np.where(aug_map == 1, 100, aug_map)
         aug_map = np.where(aug_map == 0, -1, aug_map)
-        self.aug_map = aug_map
-        # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
 
+        # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
         # you should inflate the map to get self.aug_map
-        # self.aug_map = new_map
+        self.aug_map = aug_map
 
     #This function return the path of the search
     def return_path(self, current_node):
@@ -231,17 +230,10 @@ class Planner(BasePlanner):
     def convert_position_to_stage_map_coordinate(self, x, y):
         x_new = int(x / self.resolution)
         y_new = int(y / self.resolution)
-        # x_new = int(x / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
-        # y_new = int(y / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
         return x_new, y_new
 
     def convert_length_to_number_of_pixels(self, i):
-        if i == 0:
-            return i
         return int(i / self.resolution)
-        # if i > 0:
-        #     return int(i / self.resolution + self.inflation_ratio + np.ceil(ROBOT_SIZE / self.resolution) + 1)
-        # return int(i / self.resolution - self.inflation_ratio - np.ceil(ROBOT_SIZE / self.resolution) - 1)
 
     def generate_plan(self):
         """TODO: FILL ME! This function generates the plan for the robot, given a goal.
@@ -339,13 +331,13 @@ if __name__ == "__main__":
         width = 2500
         height = 983
         resolution = 0.02
+        inflation_ratio = 5
     else:
         width = 200
         height = 200
         resolution = 0.05
+        inflation_ratio = 3
 
-    # TODO: You should change this value accordingly
-    inflation_ratio = 3
     planner = Planner(width, height, resolution, inflation_ratio=inflation_ratio)
     planner.set_goal(goal[0], goal[1])
     if planner.goal is not None:
