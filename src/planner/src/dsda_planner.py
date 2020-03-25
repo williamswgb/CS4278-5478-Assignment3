@@ -47,26 +47,6 @@ class Node():
 
 class Planner(BasePlanner):
 
-    def map_callback(self):
-        """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
-        """
-        # Tuple = (-1, 100, ...)
-        self.map = rospy.wait_for_message('/map', OccupancyGrid).data
-        # self.map = tuple(np.loadtxt('map.txt'))
-
-        aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
-        aug_map = np.where(aug_map == 100, 1, aug_map)
-        aug_map = np.where(aug_map == -1, 0, aug_map)
-        # aug_map = np.flipud(aug_map)
-        inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
-        aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
-        aug_map = np.where(aug_map == 1, 100, aug_map)
-        aug_map = np.where(aug_map == 0, -1, aug_map)
-
-        # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
-        # you should inflate the map to get self.aug_map
-        self.aug_map = aug_map
-
     #This function return the path of the search
     def return_path(self, current_node):
         path = []
@@ -192,11 +172,6 @@ class Planner(BasePlanner):
                             break
                         j_start += increment
 
-                # for i in range(x_new):
-                #     # Make sure walkable terrain
-                #     if (maze[node_position[1]][node_position[0]] != -1):
-                #         continue
-
                 if (collided):
                     continue
 
@@ -250,8 +225,6 @@ class Planner(BasePlanner):
         """
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        # x_start, y_start, phi = (1, 1, 0)
-        # x_goal, y_goal = (5, 5)
         x_start, y_start, phi = self.get_current_discrete_state() # (1, 1, 0) []>
         x_goal, y_goal = self._get_goal_position()
         start = self.convert_position_to_stage_map_coordinate(x_start, y_start)

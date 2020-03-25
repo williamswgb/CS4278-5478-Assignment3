@@ -7,6 +7,7 @@ from nav_msgs.msg import *
 from sensor_msgs.msg import *
 from const import *
 from math import *
+from scipy import ndimage
 import copy
 import argparse
 
@@ -75,9 +76,17 @@ class Planner:
         self.map = rospy.wait_for_message('/map', OccupancyGrid).data
 
         # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
+        aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
+        aug_map = np.where(aug_map == 100, 1, aug_map)
+        aug_map = np.where(aug_map == -1, 0, aug_map)
+
+        inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
+        aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
+        aug_map = np.where(aug_map == 1, 100, aug_map)
+        aug_map = np.where(aug_map == 0, -1, aug_map)
 
         # you should inflate the map to get self.aug_map
-        self.aug_map = copy.deepcopy(self.map)
+        self.aug_map = aug_map
 
     def _pose_callback(self, msg):
         """get the raw pose of the robot from ROS

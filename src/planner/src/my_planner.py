@@ -30,25 +30,25 @@ class Node():
 
 class Planner(BasePlanner):
 
-    def map_callback(self):
-        """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
-        """
-        # Tuple = (-1, 100, ...)
-        self.map = rospy.wait_for_message('/map', OccupancyGrid).data
-        # self.map = tuple(np.loadtxt('map.txt'))
+    # def map_callback(self):
+    #     """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
+    #     """
+    #     # Tuple = (-1, 100, ...)
+    #     self.map = rospy.wait_for_message('/map', OccupancyGrid).data
+    #     # self.map = tuple(np.loadtxt('map.txt'))
 
-        aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
-        aug_map = np.where(aug_map == 100, 1, aug_map)
-        aug_map = np.where(aug_map == -1, 0, aug_map)
-        # aug_map = np.flipud(aug_map)
-        inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
-        aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
-        aug_map = np.where(aug_map == 1, 100, aug_map)
-        aug_map = np.where(aug_map == 0, -1, aug_map)
+    #     aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
+    #     aug_map = np.where(aug_map == 100, 1, aug_map)
+    #     aug_map = np.where(aug_map == -1, 0, aug_map)
+    #     # aug_map = np.flipud(aug_map)
+    #     inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
+    #     aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
+    #     aug_map = np.where(aug_map == 1, 100, aug_map)
+    #     aug_map = np.where(aug_map == 0, -1, aug_map)
 
-        # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
-        # you should inflate the map to get self.aug_map
-        self.aug_map = aug_map
+    #     # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
+    #     # you should inflate the map to get self.aug_map
+    #     self.aug_map = aug_map
 
     def astar_path(self, start, end, cost=1):
         """
