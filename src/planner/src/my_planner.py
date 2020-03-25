@@ -34,8 +34,8 @@ class Planner(BasePlanner):
         """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
         """
         # Tuple = (-1, 100, ...)
-        # self.map = rospy.wait_for_message('/map', OccupancyGrid).data
-        self.map = tuple(np.loadtxt('map.txt'))
+        self.map = rospy.wait_for_message('/map', OccupancyGrid).data
+        # self.map = tuple(np.loadtxt('map.txt'))
 
         aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
         aug_map = np.where(aug_map == 100, 1, aug_map)
