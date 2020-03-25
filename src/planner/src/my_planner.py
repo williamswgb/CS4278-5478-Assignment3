@@ -167,19 +167,18 @@ class Planner(BasePlanner):
         start = self.get_current_discrete_state() # (1, 1, 0) []>
         goal = self._get_goal_position()
         path = self.astar_path(start, goal)
-        # start = (1, 1, 0)
-        # goal = (5, 5)
-        # path = [(1, 1, 0), (1.0, 1.0, 1.0), (1.0, 2.0, 1.0), (1.0, 3.0, 1.0), (1.0, 4.0, 1.0), (1.0, 5.0, 1.0), (1.0, 6.0, 1.0), (1.0, 7.0, 1.0), (1.0, 8.0, 1.0), (1.0, 9.0, 1.0), (1.0, 9.0, 0.0), (2.0, 9.0, 0.0), (3.0, 9.0, 0.0), (4.0, 9.0, 0.0), (5.0, 9.0, 0.0), (6.0, 9.0, 0.0), (7.0, 9.0, 0.0), (8.0, 9.0, 0.0), (9.0, 9.0, 0.0), (9.0, 9.0, 3.0), (9.0, 8.0, 3.0), (9.0, 7.0, 3.0), (9.0, 6.0, 3.0), (9.0, 5.0, 3.0), (9.0, 4.0, 3.0), (9.0, 3.0, 3.0), (9.0, 2.0, 3.0), (9.0, 2.0, 2.0), (8.0, 2.0, 2.0), (7.0, 2.0, 2.0), (6.0, 2.0, 2.0), (5.0, 2.0, 2.0), (4.0, 2.0, 2.0), (4.0, 2.0, 1.0), (4.0, 3.0, 1.0), (4.0, 4.0, 1.0), (4.0, 5.0, 1.0), (4.0, 6.0, 1.0), (4.0, 7.0, 1.0), (4.0, 7.0, 0.0), (5.0, 7.0, 0.0), (6.0, 7.0, 0.0), (7.0, 7.0, 0.0), (7.0, 7.0, 3.0), (7.0, 6.0, 3.0), (7.0, 5.0, 3.0), (7.0, 5.0, 2.0), (6.0, 5.0, 2.0), (5.0, 5.0, 2.0)]
-        
         actions = []
-        for i in range(1, len(path)):
-            theta_diff = int(path[i][2] - path[i-1][2])
+        if path is not None:
+            for i in range(1, len(path)):
+                theta_diff = int(path[i][2] - path[i-1][2])
 
-            if theta_diff == 0:
-                actions.append((1, 0))
-            else:
-                theta_diff = -1 if theta_diff == 3 else theta_diff
-                actions.append((0, theta_diff))
+                if theta_diff == 0:
+                    actions.append((1, 0))
+                else:
+                    theta_diff = -1 if theta_diff == 3 else theta_diff
+                    actions.append((0, theta_diff))
+        else:
+            print("No path found")
 
         self.action_seq = actions
 
