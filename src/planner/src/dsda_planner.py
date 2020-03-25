@@ -12,18 +12,8 @@ import argparse
 from scipy import ndimage
 from pdb import set_trace
 
-from base_planner import Planner as BasePlanner, dump_action_table, ROBOT_SIZE
+from base_planner import Planner as BasePlanner, dump_action_table
 
-EIGHT_DIRECTION_ACTIONS = {
-    "N": (0, 1),
-    "S": (0, -1),
-    "E": (1, 0),
-    "W": (-1, 0),
-    "NE": (1, 1),
-    "SE": (-1, 1),
-    "SW": (-1, -1),
-    "NW": (1, -1),
-}
 FOUR_DIRECTION_ACTIONS = {
     "N": (0, -1),
     "S": (0, 1),
@@ -321,7 +311,7 @@ if __name__ == "__main__":
 
     # save your action sequence
     result = np.array(planner.action_seq)
-    # np.savetxt("actions_continuous.txt", result, fmt="%.2e")
+    np.savetxt("actions_continuous.txt", result, fmt="%.2e")
 
     # for MDP, please dump your policy table into a json file
     # dump_action_table(planner.action_table, 'mdp_policy.json')
