@@ -122,7 +122,7 @@ class Planner(BasePlanner):
             # Generate children from all adjacent squares
             children = []
             x, y, theta = current_node.position
-            for w in range(4):
+            for w in [0, 1, 3]:
                 v = 1 if w == 0 else 0
                 new_position = self.discrete_motion_predict(x, y, theta, v, w)
                 if (new_position):
