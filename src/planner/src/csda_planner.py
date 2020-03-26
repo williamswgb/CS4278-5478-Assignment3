@@ -10,8 +10,6 @@ from math import *
 import copy
 import argparse
 from scipy import ndimage
-from math import pi, sqrt, sin, cos, tan, floor
-from hybrid_astar import search, reconstruct_path
 from pdb import set_trace
 
 from base_planner import Planner as BasePlanner, dump_action_table, ROBOT_SIZE
