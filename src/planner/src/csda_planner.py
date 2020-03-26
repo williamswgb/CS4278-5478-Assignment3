@@ -33,25 +33,25 @@ class Node():
 
 class Planner(BasePlanner):
 
-    def map_callback(self):
-        """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
-        """
-        # Tuple = (-1, 100, ...)
-        # self.map = rospy.wait_for_message('/map', OccupancyGrid).data
-        self.map = tuple(np.loadtxt('map.txt'))
+    # def map_callback(self):
+    #     """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
+    #     """
+    #     # Tuple = (-1, 100, ...)
+    #     # self.map = rospy.wait_for_message('/map', OccupancyGrid).data
+    #     self.map = tuple(np.loadtxt('map.txt'))
 
-        aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
-        aug_map = np.where(aug_map == 100, 1, aug_map)
-        aug_map = np.where(aug_map == -1, 0, aug_map)
-        # aug_map = np.flipud(aug_map)
-        inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
-        aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
-        aug_map = np.where(aug_map == 1, 100, aug_map)
-        aug_map = np.where(aug_map == 0, -1, aug_map)
+    #     aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
+    #     aug_map = np.where(aug_map == 100, 1, aug_map)
+    #     aug_map = np.where(aug_map == -1, 0, aug_map)
+    #     # aug_map = np.flipud(aug_map)
+    #     inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
+    #     aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
+    #     aug_map = np.where(aug_map == 1, 100, aug_map)
+    #     aug_map = np.where(aug_map == 0, -1, aug_map)
 
-        # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
-        # you should inflate the map to get self.aug_map
-        self.aug_map = aug_map
+    #     # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
+    #     # you should inflate the map to get self.aug_map
+    #     self.aug_map = aug_map
 
     def hybrid_astar_path(self, start, end, cost=1):
         """
@@ -105,17 +105,17 @@ class Planner(BasePlanner):
                     current_node = item
                     current_index = index
 
-            print("Current node")
-            print("x,y,theta", current_node.position)
-            print("f:", current_node.f)
-            print("g:", current_node.g)
-            print("h:", current_node.h)
+            # print("Current node")
+            # print("x,y,theta", current_node.position)
+            # print("f:", current_node.f)
+            # print("g:", current_node.g)
+            # print("h:", current_node.h)
 
             # Pop current node out off yet_to_visit list, add to visited list
             yet_to_visit_list.pop(current_index)
             visited_list.append(current_node)
 
-            print("Reach goal", self._check_goal(current_node.position))
+            # print("Reach goal", self._check_goal(current_node.position))
             # test if goal is reached or not, if yes then return the path
             if self._check_goal(current_node.position):
                 path = []
@@ -180,23 +180,20 @@ class Planner(BasePlanner):
         """
 
         # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        start = (1, 1, 0)
-        # start = self.get_current_discrete_state() # (1, 1, 0) []>
-        # goal = self._get_goal_position()
+        # start = (1, 1, 0)
+        start = self.get_current_discrete_state() # (1, 1, 0) []>
+        goal = self._get_goal_position()
         path = self.hybrid_astar_path(start, goal)
-        set_trace()
         actions = []
-        # if path is not None:
-        #     for i in range(1, len(path)):
-        #         theta_diff = int(path[i][2] - path[i-1][2])
-
-        #         if theta_diff == 0:
-        #             actions.append((1, 0))
-        #         else:
-        #             theta_diff = -1 if theta_diff == 3 else theta_diff
-        #             actions.append((0, theta_diff))
-        # else:
-        #     print("No path found")
+        if path is not None:
+            for i in range(1, len(path)):
+                x_prev, y_prev, theta_prev = path[i-1]
+                x_cur, y_cur, theta_cur = path[i]
+                theta_diff = theta_cur - theta_prev
+                speed = 1 if theta_diff == 0 else 0 
+                actions.append((speed, theta_diff))
+        else:
+            print("No path found")
 
         self.action_seq = actions
 
@@ -223,7 +220,7 @@ class Planner(BasePlanner):
 if __name__ == "__main__":
     # TODO: You can run the code using the code below
     parser = argparse.ArgumentParser()
-    parser.add_argument('--goal', type=str, default='5,5',
+    parser.add_argument('--goal', type=str, default='1,8',
                         help='goal position')
     parser.add_argument('--com', type=int, default=0,
                         help="if the map is com1 map")
