@@ -10,9 +10,8 @@ from math import *
 import copy
 import argparse
 from scipy import ndimage
-from pdb import set_trace
 
-from base_planner import Planner as BasePlanner, dump_action_table, ROBOT_SIZE
+from base_planner import Planner
 
 class Node():
     """A node class for A* Pathfinding"""
@@ -26,30 +25,9 @@ class Node():
         self.f = 0
 
     def __eq__(self, other):
-        # return self.position == other.position
         return int(floor(self.position[0])) == int(floor(other.position[0])) and int(floor(self.position[1])) == int(floor(other.position[1]))
 
-class Planner(BasePlanner):
-
-    # def map_callback(self):
-    #     """Get the occupancy grid and inflate the obstacle by some pixels. You should implement the obstacle inflation yourself to handle uncertainty.
-    #     """
-    #     # Tuple = (-1, 100, ...)
-    #     # self.map = rospy.wait_for_message('/map', OccupancyGrid).data
-    #     self.map = tuple(np.loadtxt('map.txt'))
-
-    #     aug_map = np.reshape(np.array(self.map), (self.world_height, self.world_width))
-    #     aug_map = np.where(aug_map == 100, 1, aug_map)
-    #     aug_map = np.where(aug_map == -1, 0, aug_map)
-    #     # aug_map = np.flipud(aug_map)
-    #     inflated_length = np.int(self.inflation_ratio + 2 * ROBOT_SIZE / self.resolution)
-    #     aug_map = ndimage.grey_dilation(aug_map, size=(inflated_length, inflated_length))
-    #     aug_map = np.where(aug_map == 1, 100, aug_map)
-    #     aug_map = np.where(aug_map == 0, -1, aug_map)
-
-    #     # TODO: FILL ME! implement obstacle inflation function and define self.aug_map = new_mask
-    #     # you should inflate the map to get self.aug_map
-    #     self.aug_map = aug_map
+class CSDA_Planner(Planner):
 
     def hybrid_astar_path(self, start, end, cost=1):
         """
@@ -80,7 +58,7 @@ class Planner(BasePlanner):
             1) We first get the current node by comparing all f cost and selecting the lowest cost node for further expansion
             2) Check max iteration reached or not . Set a message and stop execution
             3) Remove the selected node from yet_to_visit list and add this node to visited list
-            4) Perofmr Goal test and return the path else perform below steps
+            4) Perform Goal test and return the path else perform below steps
             5) For selected node find out all children (use move to find children)
                 a) get the current postion for the selected node (this becomes parent node for the children)
                 b) check if a valid position exist (boundary will make few nodes invalid)
@@ -88,7 +66,6 @@ class Planner(BasePlanner):
                 d) add to valid children node list for the selected parent
 
                 For all the children node
-                    a) if child in visited list then ignore it and try next node
                     b) calculate child node g, h and f values
                     c) if child in yet_to_visit list then ignore it
                     d) else move the child to yet_to_visit list
@@ -103,17 +80,10 @@ class Planner(BasePlanner):
                     current_node = item
                     current_index = index
 
-            # print("Current node")
-            # print("x,y,theta", current_node.position)
-            # print("f:", current_node.f)
-            # print("g:", current_node.g)
-            # print("h:", current_node.h)
-
             # Pop current node out off yet_to_visit list, add to visited list
             yet_to_visit_list.pop(current_index)
             visited_list.append(current_node)
 
-            # print("Reach goal", self._check_goal(current_node.position))
             # test if goal is reached or not, if yes then return the path
             if self._check_goal(current_node.position):
                 print("Reach goal", self._check_goal(current_node.position))
@@ -138,13 +108,8 @@ class Planner(BasePlanner):
                     new_node = Node(current_node, new_position)
                     children.append(new_node)
 
-            added = 0
             # Loop through children
             for child in children:
-                # Child is on the visited list (search entire visited list)
-                # if len([visited_child for visited_child in visited_list if visited_child == child]) > 0:
-                #     continue
-
                 # Create the f, g, and h values
                 child.g = current_node.g + cost
                 ## Heuristic costs calculated here, this is using eucledian distance
@@ -156,13 +121,7 @@ class Planner(BasePlanner):
                 if len([i for i in yet_to_visit_list if child == i and child.g > i.g]) > 0:
                     continue
 
-                added += 1
-                # Add the child to the yet_to_visit list
                 yet_to_visit_list.append(child)
-
-            # print("Children:", len(children))
-            # print("Added:", added)
-            # print("Yet_To_Visit_List", len(yet_to_visit_list))
 
     def generate_plan(self):
         """TODO: FILL ME! This function generates the plan for the robot, given a goal.
@@ -178,14 +137,13 @@ class Planner(BasePlanner):
         Each action could be: (v, \omega) where v is the linear velocity and \omega is the angular velocity
         """
 
-        # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        # start = (1, 1, 0)
-        start = self.get_current_discrete_state() # (1, 1, 0) []>
+        start = self.get_current_discrete_state()
         goal = self._get_goal_position()
         path = self.hybrid_astar_path(start, goal)
         actions = []
         if path is not None:
-            print("Generating path")
+            self.path = path
+            print("Generating action sequence")
             for i in range(1, len(path)):
                 x_prev, y_prev, theta_prev = path[i-1]
                 x_cur, y_cur, theta_cur = path[i]
@@ -243,7 +201,7 @@ if __name__ == "__main__":
         resolution = 0.05
         inflation_ratio = 3
 
-    planner = Planner(width, height, resolution, inflation_ratio=inflation_ratio)
+    planner = CSDA_Planner(width, height, resolution, inflation_ratio=inflation_ratio)
     planner.set_goal(goal[0], goal[1])
     if planner.goal is not None:
         planner.generate_plan()
@@ -253,10 +211,7 @@ if __name__ == "__main__":
 
     # save your action sequence
     result = np.array(planner.action_seq)
-    np.savetxt("actions_continuous.txt", result, fmt="%.2e")
-
-    # for MDP, please dump your policy table into a json file
-    # dump_action_table(planner.action_table, 'mdp_policy.json')
+    np.savetxt("2_maze_{}_{}.txt".format(goal[0], goal[1]), result, fmt="%.2e")
 
     # spin the ros
     rospy.spin()

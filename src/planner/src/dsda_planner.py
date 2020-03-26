@@ -10,9 +10,8 @@ from math import *
 import copy
 import argparse
 from scipy import ndimage
-from pdb import set_trace
 
-from base_planner import Planner as BasePlanner, dump_action_table
+from base_planner import Planner
 
 FOUR_DIRECTION_ACTIONS = {
     "N": (0, -1),
@@ -35,7 +34,7 @@ class Node():
     def __eq__(self, other):
         return self.position == other.position
 
-class Planner(BasePlanner):
+class DSDA_Planner(Planner):
 
     #This function return the path of the search
     def return_path(self, current_node):
@@ -78,12 +77,11 @@ class Planner(BasePlanner):
         outer_iterations = 0
         max_iterations = (len(maze) // 2) ** 10
 
-
         """
             1) We first get the current node by comparing all f cost and selecting the lowest cost node for further expansion
             2) Check max iteration reached or not . Set a message and stop execution
             3) Remove the selected node from yet_to_visit list and add this node to visited list
-            4) Perofmr Goal test and return the path else perform below steps
+            4) Perform Goal test and return the path else perform below steps
             5) For selected node find out all children (use move to find children)
                 a) get the current postion for the selected node (this becomes parent node for the children)
                 b) check if a valid position exist (boundary will make few nodes invalid)
@@ -214,8 +212,7 @@ class Planner(BasePlanner):
         Each action could be: (v, \omega) where v is the linear velocity and \omega is the angular velocity
         """
 
-        # direction: theta: phi (E, 0, 0), (N, 90, 1), (W, 180, 2), (S, 270, -1)
-        x_start, y_start, phi = self.get_current_discrete_state() # (1, 1, 0) []>
+        x_start, y_start, phi = self.get_current_discrete_state()
         x_goal, y_goal = self._get_goal_position()
         start = self.convert_position_to_stage_map_coordinate(x_start, y_start)
         goal = self.convert_position_to_stage_map_coordinate(x_goal, y_goal)
@@ -257,6 +254,7 @@ class Planner(BasePlanner):
                     current_x, current_y, current_phi = next_x, next_y, next_phi
                     break
 
+        self.path = path
         self.action_seq = actions
 
     def collision_checker(self, x, y):
@@ -301,7 +299,7 @@ if __name__ == "__main__":
         resolution = 0.05
         inflation_ratio = 3
 
-    planner = Planner(width, height, resolution, inflation_ratio=inflation_ratio)
+    planner = DSDA_Planner(width, height, resolution, inflation_ratio=inflation_ratio)
     planner.set_goal(goal[0], goal[1])
     if planner.goal is not None:
         planner.generate_plan()
@@ -311,10 +309,7 @@ if __name__ == "__main__":
 
     # save your action sequence
     result = np.array(planner.action_seq)
-    np.savetxt("actions_continuous.txt", result, fmt="%.2e")
-
-    # for MDP, please dump your policy table into a json file
-    # dump_action_table(planner.action_table, 'mdp_policy.json')
+    np.savetxt("1_maze_{}_{}.txt".format(goal[0], goal[1]), result, fmt="%.2e")
 
     # spin the ros
     rospy.spin()
