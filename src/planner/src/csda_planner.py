@@ -116,6 +116,7 @@ class Planner(BasePlanner):
             # print("Reach goal", self._check_goal(current_node.position))
             # test if goal is reached or not, if yes then return the path
             if self._check_goal(current_node.position):
+                print("Reach goal", self._check_goal(current_node.position))
                 path = []
                 current = current_node
                 while current is not None:
@@ -127,15 +128,15 @@ class Planner(BasePlanner):
             # Generate children from all adjacent squares
             children = []
             x, y, theta = current_node.position
-            for v in range(1, 2):
-                for omega in np.arange(-1, 1.5, 0.5):
-                    w_radian = omega * pi
-                    # Get node position
-                    new_position = self.motion_predict(x, y, theta, v, w_radian)
-                    if (new_position):
-                        # Create new node
-                        new_node = Node(current_node, new_position)
-                        children.append(new_node)
+            v = 1
+            for omega in np.arange(-1, 1.5, 0.5):
+                w_radian = omega * pi
+                # Get node position
+                new_position = self.motion_predict(x, y, theta, v, w_radian)
+                if (new_position):
+                    # Create new node
+                    new_node = Node(current_node, new_position)
+                    children.append(new_node)
 
             added = 0
             # Loop through children
@@ -184,11 +185,12 @@ class Planner(BasePlanner):
         path = self.hybrid_astar_path(start, goal)
         actions = []
         if path is not None:
+            print("Generate path")
             for i in range(1, len(path)):
                 x_prev, y_prev, theta_prev = path[i-1]
                 x_cur, y_cur, theta_cur = path[i]
                 theta_diff = theta_cur - theta_prev
-                speed = 1 if theta_diff == 0 else 0 
+                speed = 1 if theta_diff == 0 else 0.1 
                 actions.append((speed, theta_diff))
         else:
             print("No path found")
