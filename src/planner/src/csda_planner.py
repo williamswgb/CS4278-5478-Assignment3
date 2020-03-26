@@ -189,9 +189,10 @@ class Planner(BasePlanner):
             for i in range(1, len(path)):
                 x_prev, y_prev, theta_prev = path[i-1]
                 x_cur, y_cur, theta_cur = path[i]
-                speed = sqrt((x_cur - x_prev)**2 + (y_cur - y_prev)**2)
-                theta_diff = (theta_cur - theta_prev) / pi
-                actions.append((speed, theta_diff))
+                r = sqrt((x_cur - x_prev)**2 + (y_cur - y_prev)**2)
+                w = (theta_cur - theta_prev) / pi
+                v = r * w if w != 0 else r
+                actions.append((v, w))
         else:
             print("No path found")
 
