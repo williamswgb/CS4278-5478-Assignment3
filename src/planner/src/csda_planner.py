@@ -185,12 +185,12 @@ class Planner(BasePlanner):
         path = self.hybrid_astar_path(start, goal)
         actions = []
         if path is not None:
-            print("Generate path")
+            print("Generating path")
             for i in range(1, len(path)):
                 x_prev, y_prev, theta_prev = path[i-1]
                 x_cur, y_cur, theta_cur = path[i]
+                speed = sqrt((x_cur - x_prev)**2 + (y_cur - y_prev)**2)
                 theta_diff = (theta_cur - theta_prev) / pi
-                speed = 1 if theta_diff == 0 else 0
                 actions.append((speed, theta_diff))
         else:
             print("No path found")
