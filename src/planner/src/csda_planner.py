@@ -190,8 +190,8 @@ class Planner(BasePlanner):
                 x_prev, y_prev, theta_prev = path[i-1]
                 x_cur, y_cur, theta_cur = path[i]
                 r = sqrt((x_cur - x_prev)**2 + (y_cur - y_prev)**2)
-                w = (theta_cur - theta_prev) / pi * 2
-                v = r * w if w != 0 else r * 1.25
+                w = (theta_cur - theta_prev) * 2
+                v = 1
                 actions.append((v, w))
         else:
             print("No path found")
@@ -249,11 +249,11 @@ if __name__ == "__main__":
         planner.generate_plan()
 
     # You could replace this with other control publishers
-    planner.publish_discrete_control()
+    planner.publish_control()
 
     # save your action sequence
     result = np.array(planner.action_seq)
-    # np.savetxt("actions_continuous.txt", result, fmt="%.2e")
+    np.savetxt("actions_continuous.txt", result, fmt="%.2e")
 
     # for MDP, please dump your policy table into a json file
     # dump_action_table(planner.action_table, 'mdp_policy.json')
